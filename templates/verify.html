@@ -2,190 +2,148 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Verify Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Document</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
-    <h1>Document Verification</h1>
-
-    {% if error %}
-
-    <p>
-        {{ error }}
-    </p>
-
-    {% endif %}
-
-    <form action="/verify" method="POST" enctype="multipart/form-data">
-
-        <label for="documentType">Choose Document Type</label>
-        <select name="documentType" id="documentType" required>
-            <option value="">--Please Choose an option--</option>
-            <option value="aadhaar">Aadhaar</option>
-            <option value="pan">PAN</option>
-            <option value="visa">VISA</option>
-        </select>
-
-        <br><br>
-
-        <label for="name">Name:</label>
-
-        <input type="text" id="name" name="name" required>
-
-        <br><br>
-
-        <label for="document" id="documentLabel">Document Number:</label>
-
-        <input type="text" id="document" name="document" required>
-
-        <br><br>
-
-        <label for="documentFile">Upload Document:</label>
-
-        <input type="file" id="documentFile" name="documentFile" accept=".jpg,.jpeg,.png" required>
-
-        <br><br>
-
-        <button type="submit">
-            Verify
-        </button>
-
-    </form>
-
-    {% if name %}
-
-    <h2>Submitted Information</h2>
-
-    <p>Document Type: {{ docType }}</p>
-
-    <p>Name: {{ name }}</p>
-
-    <p>Document Number: {{ document }}</p>
-
-    <p>Uploaded File: {{ filename }}</p>
-
-
-    <h2>OCR Text</h2>
-
-    <pre>{{ text }}</pre>
-
-
-    <h2>Verification Results</h2>
-
-    <p>
-        Extracted Document Number:
-        {{ extracted_document }}
-    </p>
-
-    <p>
-        Document Validation:
-        {{ document_status }}
-    </p>
-
-    <p>
-        Name Similarity:
-        {{ name_similarity }}%
-    </p>
-
-    <p>
-        Document Format:
-        {% if document_format_valid %}
-        Valid
-        {% else %}
-        Invalid
-        {% endif %}
-    </p>
-
-
-    <h2>Risk Assessment</h2>
-
-    <p>
-        Risk Score:
-        {{ risk_score }}
-    </p>
-
-    <p>
-        Risk Level:
-        {{ risk_level }}
-    </p>
-
-    <p>
-        Status:
-        {{ status }}
-    </p>
-
-    {% endif %}
-
-    {% if error %}
-    <p>{{ error }}</p>
-    {% endif %}
-
-
-    <script>
-
-        const documentType =
-            document.getElementById("documentType");
-
-        const documentLabel =
-            document.getElementById("documentLabel");
-
-        const documentInput =
-            document.getElementById("document");
-
-
-        documentType.addEventListener(
-            "change",
-            function () {
-
-                if (this.value === "pan") {
-
-                    documentLabel.textContent =
-                        "PAN Number:";
-
-                    documentInput.placeholder =
-                        "Enter PAN number";
-
-                }
-
-                else if (this.value === "aadhaar") {
-
-                    documentLabel.textContent =
-                        "Aadhaar Number:";
-
-                    documentInput.placeholder =
-                        "Enter 12-digit Aadhaar number";
-
-                }
-
-                else if (this.value === "visa") {
-
-                    documentLabel.textContent =
-                        "VISA Number:";
-
-                    documentInput.placeholder =
-                        "Enter VISA number";
-
-                }
-
-                else {
-
-                    documentLabel.textContent =
-                        "Document Number:";
-
-                    documentInput.placeholder =
-                        "";
-
-                }
-
-            }
-        );
-
-    </script>
-
+  <header class="navbar">
+    <div class="container">
+      <span class="logo">📄 VeriScan</span>
+      <nav>
+        <a href="{{ url_for('home') }}">Home</a>
+        <a href="{{ url_for('verify') }}" class="active">Verify Document</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="verify-wrapper">
+      <!-- Left Column: Form -->
+      <section class="form-section">
+        <h2>Enter Document Details</h2>
+        <form id="verifyForm" enctype="multipart/form-data">
+          <div class="form-group">
+            <label for="documentType">Document Type *</label>
+            <select id="documentType" name="documentType" required>
+              <option value="">-- Select --</option>
+              <option value="pan">PAN Card</option>
+              <option value="aadhaar">Aadhaar</option>
+              <option value="visa">Visa</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="name">Full Name (as on document) *</label>
+            <input type="text" id="name" name="name" placeholder="e.g. Rahul Kumar" required>
+          </div>
+
+          <div class="form-group">
+            <label for="document" id="documentLabel">Document Number *</label>
+            <input type="text" id="document" name="document" placeholder="Enter document number" required>
+          </div>
+
+          <div class="form-group">
+            <label for="documentFile">Upload Document Image *</label>
+            <input type="file" id="documentFile" name="documentFile" accept=".jpg,.jpeg,.png" required>
+            <small class="hint">Supported: JPG, JPEG, PNG (max 5 MB)</small>
+          </div>
+
+          <button type="submit" class="btn primary-btn" id="submitBtn">Verify Document</button>
+        </form>
+        <div id="errorMessage" class="error-message hidden"></div>
+      </section>
+
+      <!-- Right Column: Results -->
+      <section class="results-section" id="resultsSection">
+        <div id="resultPlaceholder">
+          <p>📎 Upload a document and click <strong>Verify</strong> to see results here.</p>
+        </div>
+
+        <div id="resultContent" class="hidden">
+          <h3>Verification Results</h3>
+
+          <!-- Risk -->
+          <div class="result-card risk-card">
+            <div class="risk-header">
+              <span class="label">Risk Level</span>
+              <span id="riskLevel" class="badge">--</span>
+            </div>
+            <div class="risk-score">
+              <span>Score</span>
+              <strong id="riskScore">--</strong>
+            </div>
+          </div>
+
+          <!-- Document -->
+          <div class="result-card">
+            <h4>Document Check</h4>
+            <div class="result-row">
+              <span>Entered Number</span>
+              <span id="enteredNumber">--</span>
+            </div>
+            <div class="result-row">
+              <span>Detected Number</span>
+              <span id="detectedNumber">--</span>
+            </div>
+            <div class="result-row">
+              <span>Number Match</span>
+              <span id="numberMatch" class="status-badge">--</span>
+            </div>
+            <div class="result-row">
+              <span>Format Valid</span>
+              <span id="formatValid" class="status-badge">--</span>
+            </div>
+          </div>
+
+          <!-- Identity -->
+          <div class="result-card">
+            <h4>Identity Verification</h4>
+            <div class="result-row">
+              <span>Name Similarity</span>
+              <span id="nameSimilarity">--%</span>
+            </div>
+          </div>
+
+          <div class="result-card">
+            <h3>AI Visual Analysis</h3>
+
+            <p>
+              <strong>Status:</strong>
+              <span id="aiStatus">-</span>
+            </p>
+
+            <p>
+              <strong>Confidence:</strong>
+              <span id="aiConfidence">-</span>
+            </p>
+
+            <p>
+              <strong>AI Risk Score:</strong>
+              <span id="aiRiskScore">-</span>
+            </p>
+
+            <h4>Detected Indicators</h4>
+
+            <ul id="aiReasons">
+              <li>No analysis available.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>Verifying document…</p>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/verify.js') }}"></script>
 </body>
 
 </html>

@@ -1,0 +1,348 @@
+/* ---------- Reset & Base ---------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary: #1a3c6e;
+  --primary-light: #2a5a8f;
+  --primary-dark: #0f2747;
+  --bg: #f5f8fc;
+  --surface: #ffffff;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #dce3ed;
+  --success: #0b7e4b;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --shadow: 0 8px 30px rgba(0,0,0,0.06);
+}
+
+body {
+  font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---------- Navbar ---------- */
+.navbar {
+  background: var(--primary);
+  color: white;
+  padding: 14px 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.navbar nav a {
+  color: rgba(255,255,255,0.8);
+  text-decoration: none;
+  margin-left: 28px;
+  padding: 6px 0;
+  border-bottom: 2px solid transparent;
+  transition: 0.2s;
+}
+
+.navbar nav a:hover,
+.navbar nav a.active {
+  color: white;
+  border-bottom-color: white;
+}
+
+/* ---------- Landing page hero ---------- */
+.hero {
+  text-align: center;
+  padding: 60px 0 40px;
+}
+
+.hero h1 {
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.subtitle {
+  font-size: 20px;
+  color: var(--muted);
+  max-width: 600px;
+  margin: 0 auto 30px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  margin: 30px 0 50px;
+}
+
+.feature-card {
+  background: var(--surface);
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.feature-card h3 {
+  margin-bottom: 8px;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-block;
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.2s;
+  text-decoration: none;
+}
+
+.primary-btn {
+  background: var(--primary);
+  color: white;
+}
+
+.primary-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(26,60,110,0.3);
+}
+
+/* ---------- Verify Page Layout ---------- */
+.verify-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin: 40px 0 60px;
+}
+
+@media (max-width: 900px) {
+  .verify-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Form ---------- */
+.form-section {
+  background: var(--surface);
+  padding: 32px 30px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.form-section h2 {
+  margin-bottom: 24px;
+  font-size: 28px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fafbfc;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26,60,110,0.15);
+}
+
+.hint {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.error-message {
+  color: var(--danger);
+  background: #fee2e2;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+  border-left: 4px solid var(--danger);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- Results Section ---------- */
+.results-section {
+  background: var(--surface);
+  padding: 32px 30px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  min-height: 400px;
+}
+
+#resultPlaceholder {
+  color: var(--muted);
+  text-align: center;
+  padding: 60px 20px;
+}
+
+#resultContent h3 {
+  font-size: 26px;
+  margin-bottom: 20px;
+}
+
+.result-card {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.result-card h4 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: var(--primary);
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9edf4;
+}
+
+.result-row:last-child {
+  border-bottom: none;
+}
+
+/* Risk card */
+.risk-card {
+  background: white;
+  border-left: 6px solid var(--muted);
+}
+
+.risk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.risk-header .label {
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-low { background: #d1fae5; color: #065f46; }
+.badge-medium { background: #fef3c7; color: #92400e; }
+.badge-high { background: #fecaca; color: #991b1b; }
+.badge-unknown { background: #e9edf4; color: #4b5563; }
+
+.risk-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.risk-score strong {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.status-badge {
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.status-success { background: #d1fae5; color: #065f46; }
+.status-fail { background: #fecaca; color: #991b1b; }
+.status-warning { background: #fef3c7; color: #92400e; }
+.status-neutral { background: #e9edf4; color: #4b5563; }
+
+/* ---------- Loading Overlay ---------- */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  gap: 16px;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+/* ---------- Footer ---------- */
+footer {
+  margin-top: 40px;
+  padding: 24px 0;
+  text-align: center;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}

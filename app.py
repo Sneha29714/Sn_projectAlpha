@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
+from ai_detector import analyze_document_with_ai
 
 import os
 import uuid
 
-from utils import process_document
+from utils import process_document, calculate_combined_risk, get_combined_risk_level
+
 
 app = Flask(__name__)
+
 
 # =========================================================
 # CONFIGURATION
@@ -22,15 +25,17 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
 
+
 # =========================================================
 # FILE VALIDATION
 # =========================================================
 
-
 def allowed_file(filename):
 
-    return ("." in filename
-            and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS)
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
 def save_uploaded_file(file):
@@ -39,9 +44,12 @@ def save_uploaded_file(file):
 
     extension = original_filename.rsplit(".", 1)[1].lower()
 
-    filename = (str(uuid.uuid4()) + "." + extension)
+    filename = str(uuid.uuid4()) + "." + extension
 
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        filename
+    )
 
     file.save(filepath)
 
@@ -49,17 +57,21 @@ def save_uploaded_file(file):
 
 
 def delete_file(filepath):
+
     try:
+
         if os.path.exists(filepath):
+
             os.remove(filepath)
+
     except OSError as e:
+
         print(f"Could not delete file: {e}")
 
 
 # =========================================================
 # HOME
 # =========================================================
-
 
 @app.route("/")
 def home():
@@ -71,7 +83,6 @@ def home():
 # WEB VERIFICATION
 # =========================================================
 
-
 @app.route("/verify", methods=["GET", "POST"])
 def verify():
 
@@ -79,6 +90,7 @@ def verify():
 
         return render_template("verify.html")
 
+
     # -----------------------------------------
     # Get form data
     # -----------------------------------------
@@ -89,13 +101,18 @@ def verify():
 
     document = request.form.get("document")
 
+
     # -----------------------------------------
     # Validate document type
     # -----------------------------------------
 
     if docType not in ["pan", "aadhaar", "visa"]:
 
-        return render_template("verify.html", error="Invalid document type")
+        return render_template(
+            "verify.html",
+            error="Invalid document type"
+        )
+
 
     # -----------------------------------------
     # Validate name
@@ -103,7 +120,11 @@ def verify():
 
     if not name or not name.strip():
 
-        return render_template("verify.html", error="Name is required")
+        return render_template(
+            "verify.html",
+            error="Name is required"
+        )
+
 
     # -----------------------------------------
     # Validate document number
@@ -111,8 +132,11 @@ def verify():
 
     if not document or not document.strip():
 
-        return render_template("verify.html",
-                               error="Document number is required")
+        return render_template(
+            "verify.html",
+            error="Document number is required"
+        )
+
 
     # -----------------------------------------
     # Get file
@@ -122,11 +146,18 @@ def verify():
 
     if not file:
 
-        return render_template("verify.html", error="No file uploaded")
+        return render_template(
+            "verify.html",
+            error="No file uploaded"
+        )
 
     if file.filename == "":
 
-        return render_template("verify.html", error="No file selected")
+        return render_template(
+            "verify.html",
+            error="No file selected"
+        )
+
 
     # -----------------------------------------
     # Validate extension
@@ -134,7 +165,11 @@ def verify():
 
     if not allowed_file(file.filename):
 
-        return render_template("verify.html", error="Invalid file type")
+        return render_template(
+            "verify.html",
+            error="Invalid file type"
+        )
+
 
     # -----------------------------------------
     # Save file
@@ -142,46 +177,107 @@ def verify():
 
     filepath, filename = save_uploaded_file(file)
 
-    # -----------------------------------------
-    # Process document
-    # -----------------------------------------
 
-    result = process_document(docType, name, document, filepath)
+    try:
 
-    # -----------------------------------------
-    # Processing error
-    # -----------------------------------------
+        # -----------------------------------------
+        # Process document
+        # -----------------------------------------
 
-    if not result["success"]:
+        result = process_document(
+            docType,
+            name,
+            document,
+            filepath
+        )
 
-        return render_template("verify.html", error=result["error"])
 
-    # -----------------------------------------
-    # Display result
-    # -----------------------------------------
+        # -----------------------------------------
+        # Processing error
+        # -----------------------------------------
 
-    return render_template(
-        "verify.html",
-        docType=docType,
-        name=name,
-        document=document,
-        filename=filename,
-        extracted_document=result["document"]["detected_number"],
-        document_status=result["document"]["number_match"],
-        name_similarity=result["identity"]["name_similarity"],
-        document_format_valid=result["document"]["format_valid"],
-        risk_score=result["risk"]["score"],
-        risk_level=result["risk"]["level"],
-        status="Analysis Complete")
+        if not result["success"]:
+
+            return render_template(
+                "verify.html",
+                error=result["error"]
+            )
+
+
+        # -----------------------------------------
+        # AI visual analysis
+        # -----------------------------------------
+
+        try:
+
+            ai_result = analyze_document_with_ai(
+                filepath,
+                docType
+            )
+
+        except Exception as e:
+
+            print("AI analysis error:", e)
+
+            ai_result = {
+                "Status": "unavailable",
+                "suspicious": None,
+                "confidence": 0,
+                "risk_score": 0,
+                "reasons": [
+                    "AI analysis was unavailable"
+                ]
+            }
+
+
+        # -----------------------------------------
+        # Display result
+        # -----------------------------------------
+
+        return render_template(
+            "verify.html",
+
+            docType=docType,
+
+            name=name,
+
+            document=document,
+
+            filename=filename,
+
+            extracted_document=result["document"]["detected_number"],
+
+            document_status=result["document"]["number_match"],
+
+            name_similarity=result["identity"]["name_similarity"],
+
+            document_format_valid=result["document"]["format_valid"],
+
+            risk_score=result["risk"]["score"],
+
+            risk_level=result["risk"]["level"],
+
+            ai_analysis=ai_result,
+
+            status="Analysis Complete"
+        )
+
+    finally:
+
+        # -----------------------------------------
+        # Delete uploaded file
+        # -----------------------------------------
+
+        delete_file(filepath)
 
 
 # =========================================================
 # API VERIFICATION
 # =========================================================
 
-
 @app.route("/api/verify", methods=["POST"])
 def api_verify():
+
 
     # -----------------------------------------
     # Get form data
@@ -193,13 +289,18 @@ def api_verify():
 
     document = request.form.get("document")
 
+
     # -----------------------------------------
     # Validate document type
     # -----------------------------------------
 
     if docType not in ["pan", "aadhaar", "visa"]:
 
-        return {"success": False, "error": "Invalid document type"}, 400
+        return {
+            "success": False,
+            "error": "Invalid document type"
+        }, 400
+
 
     # -----------------------------------------
     # Validate name
@@ -207,7 +308,11 @@ def api_verify():
 
     if not name or not name.strip():
 
-        return {"success": False, "error": "Name is required"}, 400
+        return {
+            "success": False,
+            "error": "Name is required"
+        }, 400
+
 
     # -----------------------------------------
     # Validate document number
@@ -215,7 +320,11 @@ def api_verify():
 
     if not document or not document.strip():
 
-        return {"success": False, "error": "Document number is required"}, 400
+        return {
+            "success": False,
+            "error": "Document number is required"
+        }, 400
+
 
     # -----------------------------------------
     # Get file
@@ -225,11 +334,18 @@ def api_verify():
 
     if not file:
 
-        return {"success": False, "error": "No file uploaded"}, 400
+        return {
+            "success": False,
+            "error": "No file uploaded"
+        }, 400
 
     if file.filename == "":
 
-        return {"success": False, "error": "No file selected"}, 400
+        return {
+            "success": False,
+            "error": "No file selected"
+        }, 400
+
 
     # -----------------------------------------
     # Validate extension
@@ -237,7 +353,11 @@ def api_verify():
 
     if not allowed_file(file.filename):
 
-        return {"success": False, "error": "Invalid file type"}, 400
+        return {
+            "success": False,
+            "error": "Invalid file type"
+        }, 400
+
 
     # -----------------------------------------
     # Save file
@@ -245,23 +365,111 @@ def api_verify():
 
     filepath, filename = save_uploaded_file(file)
 
-    # -----------------------------------------
-    # Process document
-    # -----------------------------------------
 
-    result = process_document(docType, name, document, filepath)
+    try:
 
-    delete_file(filepath)
+        # -----------------------------------------
+        # Process document
+        # -----------------------------------------
 
-    # -----------------------------------------
-    # Return result
-    # -----------------------------------------
+        result = process_document(
+            docType,
+            name,
+            document,
+            filepath
+        )
 
-    if not result["success"]:
 
-        return result, 400
+        # -----------------------------------------
+        # Processing error
+        # -----------------------------------------
 
-    return result, 200
+        if not result["success"]:
+
+            return result, 400
+
+
+        # -----------------------------------------
+        # AI visual analysis
+        # -----------------------------------------
+
+        try:
+
+            ai_result = analyze_document_with_ai(
+                filepath,
+                docType
+            )
+
+        except Exception as e:
+
+            print("AI analysis error:", e)
+
+            ai_result = {
+                "Status": "unavailable",
+                "suspicious": None,
+                "confidence": 0,
+                "risk_score": 0,
+                "reasons": [
+                    "AI analysis was unavailable"
+                ]
+            }
+
+
+        # -----------------------------------------
+        # Add AI result to existing result
+        # -----------------------------------------
+
+        result["ai_analysis"] = {
+
+            "suspicious": ai_result["suspicious"],
+
+            "confidence": ai_result["confidence"],
+
+            "risk_score": ai_result["risk_score"],
+
+            "reasons": ai_result["reasons"]
+        }
+
+        rule_risk = result["risk"]["score"]
+
+        if ai_result.get("status") == "available":
+            ai_risk = ai_result["risk_score"]
+
+            combined_risk = calculate_combined_risk(
+                rule_risk,
+                ai_risk
+            )
+
+            final_risk = {
+                "score": combined_risk,
+                "level": get_combined_risk_level(combined_risk),
+                "ai_included": True
+            }
+
+        else:
+            final_risk = {
+                "score": rule_risk,
+                "level": result["risk"]["level"],
+                "ai_included": False
+            }
+
+        result["final_risk"] = final_risk
+
+
+        # -----------------------------------------
+        # Return final result
+        # -----------------------------------------
+
+        return result, 200
+
+
+    finally:
+
+        # -----------------------------------------
+        # Delete uploaded file
+        # -----------------------------------------
+
+        delete_file(filepath)
 
 
 # =========================================================
@@ -271,13 +479,15 @@ def api_verify():
 @app.route("/api/health", methods=["GET"])
 def health():
 
-    return {"success": True, "status": "Backend is running"}, 200
+    return {
+        "success": True,
+        "status": "Backend is running"
+    }, 200
 
 
 # =========================================================
 # FILE TOO LARGE
 # =========================================================
-
 
 @app.errorhandler(413)
 def file_too_large(error):
@@ -295,3 +505,4 @@ def file_too_large(error):
 if __name__ == "__main__":
 
     app.run(debug=True)
+

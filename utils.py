@@ -250,3 +250,25 @@ def process_document(document_type, name, document_number, filepath):
                              extracted_text)
 
     return result
+
+
+def calculate_combined_risk(rule_risk, ai_risk):
+    """
+    Combine rule-based verification risk and AI visual risk.
+
+    Rule-based checks are given more weight because they are
+    deterministic validation checks.
+    """
+
+    combined_score = (rule_risk * 0.6) + (ai_risk * 0.4)
+
+    return round(combined_score)
+
+
+def get_combined_risk_level(score):
+    if score >= 50:
+        return "High Risk"
+    elif score >= 20:
+        return "Medium Risk"
+
+    return "Low Risk"
