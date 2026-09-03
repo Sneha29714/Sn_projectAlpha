@@ -1,27 +1,16 @@
 import base64
 import json
-import os
 
-from dotenv import load_dotenv
-from huggingface_hub import InferenceClient
+import ollama
 
 
-load_dotenv()
+# Local Ollama server
+OLLAMA_HOST = "http://127.0.0.1:11434"
 
+# Local Gemma 3 model
+MODEL = "gemma3:4b"
 
-HF_TOKEN = os.getenv("HF_TOKEN")
-
-if not HF_TOKEN:
-    raise RuntimeError("HF_TOKEN is not configured in .env")
-
-
-client = InferenceClient(
-    provider="auto",
-    api_key=HF_TOKEN
-)
-
-
-MODEL = "google/gemma-3-4b-it"
+client = ollama.Client(host=OLLAMA_HOST)
 
 
 def encode_image(filepath):
@@ -35,38 +24,23 @@ def encode_image(filepath):
         ).decode("utf-8")
 
 
-def get_mime_type(filepath):
-    """
-    Determine the MIME type of the uploaded image.
-    """
-
-    extension = os.path.splitext(filepath)[1].lower()
-
-    if extension in [".jpg", ".jpeg"]:
-        return "image/jpeg"
-
-    if extension == ".png":
-        return "image/png"
-
-    raise ValueError("Only JPG, JPEG and PNG images are supported")
-
-
 def analyze_document_with_ai(filepath, document_type):
     """
-    Analyze a document image using Qwen3-VL.
+    Analyze a document image using local Ollama + Gemma 3 4B.
 
     Returns:
         dict containing:
+        - status
         - suspicious
         - confidence
         - risk_score
         - reasons
     """
 
-    image_base64 = encode_image(filepath)
-    mime_type = get_mime_type(filepath)
+    try:
+        image_base64 = encode_image(filepath)
 
-    prompt = f"""
+        prompt = f"""
 You are an AI-assisted document screening system.
 
 Analyze this {document_type} document image for visible signs
@@ -121,79 +95,87 @@ Rules:
 - Do not include explanations outside the JSON
 """
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": (
-                                f"data:{mime_type};base64,"
-                                f"{image_base64}"
-                            )
-                        }
-                    }
-                ]
+        response = client.chat(
+            model=MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                    "images": [image_base64],
+                }
+            ],
+            format="json",
+        )
+
+        result_text = response["message"]["content"].strip()
+
+        try:
+            result = json.loads(result_text)
+
+        except json.JSONDecodeError:
+            return {
+                "status": "available",
+                "suspicious": None,
+                "confidence": 0,
+                "risk_score": 0,
+                "reasons": [
+                    "AI returned an invalid response format"
+                ],
             }
+
+        suspicious = result.get("suspicious", False)
+
+        try:
+            confidence = float(
+                result.get("confidence", 0)
+            )
+        except (TypeError, ValueError):
+            confidence = 0
+
+        try:
+            risk_score = int(
+                result.get("risk_score", 0)
+            )
+        except (TypeError, ValueError):
+            risk_score = 0
+
+        confidence = max(
+            0,
+            min(1, confidence)
+        )
+
+        risk_score = max(
+            0,
+            min(100, risk_score)
+        )
+
+        reasons = result.get("reasons", [])
+
+        if not isinstance(reasons, list):
+            reasons = [str(reasons)]
+
+        reasons = [
+            str(reason)
+            for reason in reasons
         ]
-    )
 
-    result_text = response.choices[0].message.content.strip()
-
-    # Sometimes models wrap JSON in ```json ... ```
-    if result_text.startswith("```"):
-        result_text = result_text.replace("```json", "")
-        result_text = result_text.replace("```", "")
-        result_text = result_text.strip()
-
-    try:
-        result = json.loads(result_text)
-    except json.JSONDecodeError:
         return {
-            "suspicious": False,
+            "status": "available",
+            "suspicious": bool(suspicious),
+            "confidence": confidence,
+            "risk_score": risk_score,
+            "reasons": reasons,
+        }
+
+    except Exception as error:
+        print(f"Local AI error: {error}")
+
+        return {
+            "status": "unavailable",
+            "suspicious": None,
             "confidence": 0,
             "risk_score": 0,
             "reasons": [
-                "AI returned an invalid response format"
-            ]
+                "Local AI analysis is unavailable"
+            ],
         }
-
-    # Basic safety checks on AI output
-    suspicious = bool(result.get("suspicious", False))
-
-    try:
-        confidence = float(result.get("confidence", 0))
-    except (TypeError, ValueError):
-        confidence = 0
-
-    try:
-        risk_score = int(result.get("risk_score", 0))
-    except (TypeError, ValueError):
-        risk_score = 0
-
-    confidence = max(0, min(1, confidence))
-    risk_score = max(0, min(100, risk_score))
-
-    reasons = result.get("reasons", [])
-
-    if not isinstance(reasons, list):
-        reasons = [str(reasons)]
-
-    reasons = [
-        str(reason)
-        for reason in reasons
-    ]
-
-    return {
-        "suspicious": suspicious,
-        "confidence": confidence,
-        "risk_score": risk_score,
-        "reasons": reasons
-    }
